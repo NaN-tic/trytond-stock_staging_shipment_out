@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<tryton>
+    <data>
+        <record model="ir.message" id="msg_missing_staging_location">
+            <field name="text">No staging location is available for shipment "%(shipment)s".</field>
+        </record>
+        <record model="ir.message" id="msg_staging_location_not_empty">
+            <field name="text">The staging location "%(location)s" must be empty.</field>
+        </record>
+        <record model="ir.message" id="msg_staging_location_shipment_unique">
+            <field name="text">A customer shipment can only reserve one staging location.</field>
+        </record>
+        <record model="ir.message" id="msg_staging_location_location_unique">
+            <field name="text">A staging location can only be reserved by one customer shipment.</field>
+        </record>
+    </data>
+</tryton>

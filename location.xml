@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+<tryton>
+    <data>
+        <record model="ir.ui.view" id="location_view_form">
+            <field name="model">stock.location</field>
+            <field name="inherit" ref="stock.location_view_form"/>
+            <field name="name">location_form</field>
+        </record>
+
+        <record model="ir.action.act_window" id="act_orphan_staging_location">
+            <field name="name">Staging Locations with Stock and no Shipment</field>
+            <field name="res_model">stock.location</field>
+            <field name="domain" eval="[
+                ('staging_customer_shipment_location', '=', True),
+                ('staging_shipment_out', '=', None),
+                ('has_stock', '=', True),
+                ]" pyson="1"/>
+        </record>
+        <record model="ir.action.act_window.view"
+            id="act_orphan_staging_location_view1">
+            <field name="sequence" eval="10"/>
+            <field name="view" ref="stock.location_view_list"/>
+            <field name="act_window" ref="act_orphan_staging_location"/>
+        </record>
+        <record model="ir.action.act_window.view"
+            id="act_orphan_staging_location_view2">
+            <field name="sequence" eval="20"/>
+            <field name="view" ref="stock.location_view_form"/>
+            <field name="act_window" ref="act_orphan_staging_location"/>
+        </record>
+        <menuitem
+            parent="stock.menu_location_tree"
+            action="act_orphan_staging_location"
+            sequence="20"
+            id="menu_orphan_staging_location"/>
+    </data>
+</tryton>

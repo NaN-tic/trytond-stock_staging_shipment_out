@@ -1,0 +1,6 @@
+<data>
+    <xpath expr="/form/notebook/page[@id='other']" position="inside">
+        <label name="origin_shipment_out"/>
+        <field name="origin_shipment_out"/>
+    </xpath>
+</data>
