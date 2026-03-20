@@ -1,0 +1,81 @@
+#
+msgid ""
+msgstr "Content-Type: text/plain; charset=utf-8\n"
+
+msgctxt "field:stock.location,has_stock:"
+msgid "Has Stock"
+msgstr "Tiene existencias"
+
+msgctxt "field:stock.location,staging_customer_shipment_location:"
+msgid "Staging Customer Shipment Location"
+msgstr "Ubicación de staging para albaranes de cliente"
+
+msgctxt "field:stock.location,staging_shipment_out:"
+msgid "Staging Customer Shipment"
+msgstr "Albarán de cliente en staging"
+
+msgctxt "field:stock.location,use_staging_area_for_customer_shipments:"
+msgid "Use Staging Area for Customer Shipments"
+msgstr "Usar zona de staging para albaranes de cliente"
+
+msgctxt "field:stock.shipment.internal,origin_shipment:"
+msgid "Origin"
+msgstr "Origen"
+
+msgctxt "field:stock.shipment.internal,origin_shipment_out:"
+msgid "Origin"
+msgstr "Origen"
+
+msgctxt "field:stock.shipment.out,internal_shipments:"
+msgid "Internal Shipments"
+msgstr "Albaranes internos"
+
+msgctxt "field:stock.shipment.out,staging_location:"
+msgid "Staging Location"
+msgstr "Ubicación de staging"
+
+msgctxt "field:stock.shipment.out-staging.location,location:"
+msgid "Location"
+msgstr "Ubicación"
+
+msgctxt "field:stock.shipment.out-staging.location,shipment:"
+msgid "Shipment"
+msgstr "Albarán"
+
+msgctxt "help:stock.location,use_staging_area_for_customer_shipments:"
+msgid "Customer shipments will reserve an empty storage location below the picking location."
+msgstr "Los albaranes de cliente reservarán una ubicación de almacenamiento vacía bajo la ubicación de picking."
+
+msgctxt "help:stock.shipment.out-staging.location,location:"
+msgid "Reserved staging location for the customer shipment."
+msgstr "Ubicación de staging reservada para el albarán de cliente."
+
+#, python-format
+msgctxt "model:ir.message,text:msg_missing_staging_location"
+msgid "No staging location is available for shipment \"%(shipment)s\"."
+msgstr "No hay ninguna ubicación de staging disponible para el albarán '%(shipment)s'."
+
+#, python-format
+msgctxt "model:ir.message,text:msg_staging_location_not_empty"
+msgid "The staging location \"%(location)s\" must be empty."
+msgstr "La ubicación de staging '%(location)s' debe estar vacía."
+
+msgctxt "model:ir.message,text:msg_staging_location_location_unique"
+msgid "A staging location can only be reserved by one customer shipment."
+msgstr "Una ubicación de staging solo puede ser reservada por un único albarán de cliente."
+
+msgctxt "model:ir.message,text:msg_staging_location_shipment_unique"
+msgid "A customer shipment can only reserve one staging location."
+msgstr "Un albarán de cliente solo puede reservar una única ubicación de staging."
+
+msgctxt "model:ir.action,name:act_orphan_staging_location"
+msgid "Staging Locations with Stock and no Shipment"
+msgstr "Ubicaciones de staging con existencias y sin albarán"
+
+msgctxt "model:ir.ui.menu,name:menu_orphan_staging_location"
+msgid "Staging Locations with Stock and no Shipment"
+msgstr "Ubicaciones de staging con existencias y sin albarán"
+
+msgctxt "model:stock.shipment.out-staging.location,string:"
+msgid "Shipment Out - Staging Location"
+msgstr "Albarán de salida - Ubicación de staging"
