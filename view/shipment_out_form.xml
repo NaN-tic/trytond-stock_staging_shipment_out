@@ -1,6 +1,6 @@
 <data>
     <xpath expr="/form/notebook/page[@id='outgoing_moves']" position="after">
-        <page string="Internal Shipments" id="internal_shipments">
+        <page name="internal_shipments">
             <field name="internal_shipments" colspan="4"/>
         </page>
     </xpath>
