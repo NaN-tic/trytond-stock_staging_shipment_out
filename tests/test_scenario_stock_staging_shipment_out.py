@@ -193,6 +193,51 @@ class Test(unittest.TestCase):
                 ('state', '=', 'request'),
                 ])
         self.assertIsNone(orphan_internal.origin_shipment_out)
+
+        second_shipment_out = ShipmentOut()
+        second_shipment_out.planned_date = datetime.date.today()
+        second_shipment_out.effective_date = datetime.date.today()
+        second_shipment_out.customer = customer
+        second_shipment_out.warehouse = warehouse
+        second_shipment_out.company = company
+        move = second_shipment_out.outgoing_moves.new()
+        move.product = product
+        move.unit = unit
+        move.quantity = 2
+        move.from_location = output_loc
+        move.to_location = customer_loc
+        move.company = company
+        move.unit_price = Decimal('0')
+        move.currency = company.currency
+        second_shipment_out.click('wait')
+
+        second_shipment_out.reload()
+        self.assertEqual(second_shipment_out.state, 'waiting')
+        self.assertEqual(second_shipment_out.staging_location.code, 'STG0')
+
+        shipment_in = ShipmentIn()
+        shipment_in.supplier = supplier
+        move = shipment_in.incoming_moves.new()
+        move.product = product
+        move.quantity = 5
+        move.from_location = supplier_loc
+        move.to_location = input_loc
+        move.unit_price = Decimal('5')
+        move.currency = company.currency
+        shipment_in.save()
+        click_skip_origin_warning(shipment_in, 'receive')
+
+        shipment_in.reload()
+        self.assertEqual(shipment_in.state, 'received')
+        self.assertEqual({
+                move.to_location.code: move.quantity
+                for move in shipment_in.inventory_moves
+                }, {
+                'STG0': 2,
+                'STO': 3,
+                })
+        click_skip_origin_warning(shipment_in, 'do')
+
         orphan_internal.click('draft')
         orphan_internal.click('wait')
         orphan_internal.click('assign_try')
@@ -208,6 +253,15 @@ class Test(unittest.TestCase):
         shipment_out.reload()
         self.assertEqual(shipment_out.state, 'picked')
         self.assertIsNone(shipment_out.staging_location)
+
+        second_shipment_out.click('assign_try')
+        second_shipment_out.reload()
+        self.assertEqual(second_shipment_out.state, 'assigned')
+        second_shipment_out.click('pick')
+
+        second_shipment_out.reload()
+        self.assertEqual(second_shipment_out.state, 'picked')
+        self.assertIsNone(second_shipment_out.staging_location)
 
         orphan_locations = Location.find([
                 ('staging_customer_shipment_location', '=', True),

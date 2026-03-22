@@ -32,6 +32,31 @@ class Location(metaclass=PoolMeta):
         'get_staging_customer_shipment_location',
         searcher='search_staging_customer_shipment_location')
 
+    def _use_staging_area(self):
+        return bool(
+            self.type == 'warehouse'
+            and self.use_staging_area_for_customer_shipments
+            and self.picking_location)
+
+    def _staging_candidates(self):
+        if not self._use_staging_area():
+            return []
+        picking_location = self.picking_location
+        candidates = list(self.search([
+                    ('type', '=', 'storage'),
+                    ('left', '>', picking_location.left),
+                    ('right', '<', picking_location.right),
+                    ], order=[('left', 'ASC')]))
+        candidates.append(picking_location)
+        seen = set()
+        ordered = []
+        for location in candidates:
+            if location.id in seen:
+                continue
+            seen.add(location.id)
+            ordered.append(location)
+        return ordered
+
     @classmethod
     def _customer_shipment_staging_location_ids(cls):
         warehouses = cls.search([
@@ -41,13 +66,8 @@ class Location(metaclass=PoolMeta):
                 ])
         location_ids = set()
         for warehouse in warehouses:
-            picking_location = warehouse.picking_location
-            location_ids.add(picking_location.id)
-            childs = cls.search([
-                    ('type', '=', 'storage'),
-                    ('parent', 'child_of', [picking_location.id]),
-                    ])
-            location_ids.update(location.id for location in childs)
+            location_ids.update(
+                location.id for location in warehouse._staging_candidates())
         return list(location_ids)
 
     @classmethod

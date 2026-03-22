@@ -1,10 +1,13 @@
 # This file is part of the stock_staging_shipment_out module for Tryton.
 # The COPYRIGHT file at the top level of this repository contains the full
 # copyright notices and license terms.
+from collections import defaultdict
+
 from trytond.exceptions import UserError
 from trytond.i18n import gettext
 from trytond.model import ModelView, Workflow, fields
 from trytond.pool import Pool, PoolMeta
+from trytond.transaction import Transaction
 
 
 class ShipmentOut(metaclass=PoolMeta):
@@ -18,34 +21,8 @@ class ShipmentOut(metaclass=PoolMeta):
         "Staging Location", readonly=True)
 
     @classmethod
-    def _use_staging_area(cls, shipment):
-        return bool(
-            shipment.warehouse
-            and shipment.warehouse.use_staging_area_for_customer_shipments
-            and shipment.warehouse.picking_location)
-
-    @classmethod
-    def _staging_candidates(cls, warehouse):
-        Location = Pool().get('stock.location')
-        picking_location = warehouse.picking_location
-        candidates = list(Location.search([
-                    ('type', '=', 'storage'),
-                    ('left', '>', picking_location.left),
-                    ('right', '<', picking_location.right),
-                    ], order=[('left', 'ASC')]))
-        candidates.append(picking_location)
-        seen = set()
-        ordered = []
-        for location in candidates:
-            if location.id in seen:
-                continue
-            seen.add(location.id)
-            ordered.append(location)
-        return ordered
-
-    @classmethod
     def _find_staging_location(cls, shipment, reserved):
-        for location in cls._staging_candidates(shipment.warehouse):
+        for location in shipment.warehouse._staging_candidates():
             if location.id in reserved:
                 continue
             if location.staging_shipment_out:
@@ -62,7 +39,7 @@ class ShipmentOut(metaclass=PoolMeta):
         reserved = set()
 
         for shipment in shipments:
-            if not cls._use_staging_area(shipment):
+            if not shipment.warehouse._use_staging_area():
                 continue
             if shipment.staging_location:
                 shipment.warehouse_storage = shipment.staging_location
@@ -173,3 +150,141 @@ class ShipmentInternal(metaclass=PoolMeta):
             default = default.copy()
         default.setdefault('origin_shipment', None)
         return super().copy(shipments, default=default)
+
+
+class ShipmentIn(metaclass=PoolMeta):
+    __name__ = 'stock.shipment.in'
+
+    @classmethod
+    def _staging_inventory_signature(cls, shipment):
+        Date = Pool().get('ir.date')
+        if not shipment.warehouse._use_staging_area():
+            return
+        with Transaction().set_context(company=shipment.company.id):
+            today = Date.today()
+        planned_dates = [
+            date for date in [shipment._move_planned_date[1], today] if date]
+        return (
+            shipment.company.id,
+            shipment.warehouse.id,
+            shipment.warehouse_storage.id,
+            max(planned_dates),
+            )
+
+    @classmethod
+    def _staging_inventory_locations(cls, shipment):
+        if not shipment.warehouse._use_staging_area():
+            return []
+        return [
+            location for location in shipment.warehouse._staging_candidates()
+            if (location.type == 'storage'
+                and location.provisioning_location == shipment.warehouse_storage)
+            ]
+
+    @classmethod
+    def _get_staging_inventory_needs(cls, shipments):
+        Product = Pool().get('product.product')
+        by_signature = defaultdict(list)
+        for shipment in shipments:
+            if shipment.warehouse_storage == shipment.warehouse_input:
+                continue
+            signature = cls._staging_inventory_signature(shipment)
+            if signature:
+                by_signature[signature].append(shipment)
+
+        needs = {}
+        for signature, signature_shipments in by_signature.items():
+            company_id, _, _, planned_date = signature
+            products = sorted({
+                    move.product.id
+                    for shipment in signature_shipments
+                    for move in shipment.incoming_moves
+                    if move.quantity > 0
+                    })
+            locations = []
+            seen = set()
+            for shipment in signature_shipments:
+                for location in cls._staging_inventory_locations(shipment):
+                    if location.id in seen:
+                        continue
+                    seen.add(location.id)
+                    locations.append(location)
+            if not products or not locations:
+                needs[signature] = (locations, {})
+                continue
+            with Transaction().set_context(
+                    company=company_id,
+                    forecast=True,
+                    stock_date_end=planned_date):
+                pbl = Product.products_by_location(
+                    [location.id for location in locations],
+                    with_childs=False,
+                    grouping_filter=(products,))
+            needs[signature] = (
+                locations,
+                {(location.id, product_id): -quantity
+                    for location in locations
+                    for product_id in products
+                    if (quantity := pbl.get((location.id, product_id), 0)) < 0
+                    })
+        return needs
+
+    def _get_split_inventory_move(
+            self, incoming_move, quantity, unit, to_location):
+        move = self._get_inventory_move(incoming_move)
+        if not move or quantity <= 0:
+            return
+        move.unit = unit
+        move.quantity = quantity
+        move.to_location = to_location
+        return move
+
+    def _get_staging_inventory_moves(
+            self, incoming_move, staging_locations, staging_needs):
+        Uom = Pool().get('product.uom')
+        move = self._get_inventory_move(incoming_move)
+        if not move:
+            return []
+
+        product = incoming_move.product
+        remaining_quantity = Uom.compute_qty(
+            incoming_move.unit, incoming_move.quantity, product.default_uom,
+            round=False)
+        moves = []
+        for location in staging_locations:
+            needed_quantity = staging_needs.get((location.id, product.id), 0)
+            if needed_quantity <= 0:
+                continue
+            quantity = min(remaining_quantity, needed_quantity)
+            move = self._get_split_inventory_move(
+                incoming_move, quantity, product.default_uom, location)
+            if not move:
+                continue
+            moves.append(move)
+            staging_needs[(location.id, product.id)] -= quantity
+            remaining_quantity -= quantity
+            if remaining_quantity <= 0:
+                break
+
+        if remaining_quantity > 0:
+            move = self._get_split_inventory_move(
+                incoming_move, remaining_quantity, product.default_uom,
+                self.warehouse_storage)
+            if move:
+                moves.append(move)
+        return moves
+
+    @classmethod
+    def create_inventory_moves(cls, shipments):
+        staging_needs = cls._get_staging_inventory_needs(shipments)
+        for shipment in shipments:
+            if shipment.warehouse_storage == shipment.warehouse_input:
+                continue
+            moves = list(shipment.moves)
+            signature = cls._staging_inventory_signature(shipment)
+            staging_locations, needs = staging_needs.get(signature, ([], {}))
+            for incoming_move in shipment.incoming_moves:
+                moves.extend(shipment._get_staging_inventory_moves(
+                        incoming_move, staging_locations, needs))
+            shipment.moves = moves
+        cls.save(shipments)
