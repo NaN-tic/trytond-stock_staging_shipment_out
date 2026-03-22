@@ -10,6 +10,7 @@ def register():
     Pool.register(
         location.Location,
         location.ShipmentOutStagingLocation,
+        shipment.ShipmentIn,
         shipment.ShipmentOut,
         shipment.ShipmentInternal,
         module='stock_staging_shipment_out', type_='model')
