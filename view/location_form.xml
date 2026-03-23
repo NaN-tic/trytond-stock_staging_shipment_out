@@ -1,5 +1,5 @@
 <data>
-    <xpath expr="/form/label[@name='picking_location']" position="after">
+    <xpath expr="/form/field[@name='picking_location']" position="after">
         <label name="use_staging_area_for_customer_shipments"/>
         <field name="use_staging_area_for_customer_shipments"/>
     </xpath>
