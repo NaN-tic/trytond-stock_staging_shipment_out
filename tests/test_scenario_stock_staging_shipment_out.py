@@ -1,9 +1,11 @@
 import datetime
 import unittest
 from decimal import Decimal
+from unittest.mock import patch
 
 from proteus import Model, Wizard
 from trytond.modules.company.tests.tools import create_company, get_company
+from trytond.modules.stock.move import Move as StockMoveModel
 from trytond.modules.stock.exceptions import MoveOriginWarning
 from trytond.tests.test_tryton import drop_db
 from trytond.tests.tools import activate_modules
@@ -20,6 +22,10 @@ class Test(unittest.TestCase):
         super().tearDown()
 
     def test(self):
+        _ = patch.object(
+            StockMoveModel, 'on_change_with_assignation_required',
+            return_value=False).start()
+
         config = activate_modules('stock_staging_shipment_out')
 
         _ = create_company()
