@@ -114,7 +114,7 @@ class ShipmentInternal(metaclass=PoolMeta):
     __name__ = 'stock.shipment.internal'
 
     origin_shipment = fields.Many2One(
-        'stock.shipment.out', "Origin", readonly=True)
+        'stock.shipment.out', "Origin", states={'editable': False})
     origin_shipment_out = fields.Function(fields.Many2One(
             'stock.shipment.out', "Origin"),
         'get_origin_shipment_out', setter='set_origin_shipment_out')
